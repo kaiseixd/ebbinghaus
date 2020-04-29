@@ -1,32 +1,54 @@
 import React, { useState, useEffect } from 'react'
-import { GetStaticProps } from 'next'
-import { Button, Statistic, Space } from 'antd'
+import { Button, Statistic, Space, Card } from 'antd'
+import axios from 'axios'
 
 import Layout from '../../components/Layout'
 import './index.less'
 
-interface Props {
-    initCount: number
+interface Day {
+    count: number
+    date: string
+    index: number
+}
+interface IDate {
+    count: number
+    date: string
 }
 
 const { Countdown } = Statistic
 
-const Count: React.FC<Props> = ({ initCount }) => {
-    const [count, setCount] = useState(0)
+const Count: React.FC = () => {
+    const [day, setDay] = useState<Day>({ count: 0, date: '20/01/01', index: 0 })
+    const [dates, setDates] = useState<IDate[]>([])
     const [deadline, setDeadline] = useState(0)
 
     useEffect(() => {
-        setCount(initCount)
-    }, [initCount])
+        getDateList()
+    }, [])
+
+    async function getDateList() {
+        const res = await axios.get('/api/count/list')
+        const dayData = res.data
+        setDay(dayData.data.day)
+        setDates(dayData.data.list)
+    }
+
+    async function setDateData(count: number) {
+        await axios.post('/api/count/set', {
+            date: day.date,
+            count
+        })
+        await getDateList()
+    }
 
     function decCount() {
-        if (count > 0) {
-            setCount(count - 1)
+        if (day.count > 0) {
+            setDateData(day.count - 1)
         }
     }
 
     function addCount() {
-        setCount(count + 1)
+        setDateData(day.count + 1)
     }
 
     function onStartCount() {
@@ -39,14 +61,14 @@ const Count: React.FC<Props> = ({ initCount }) => {
 
     function onFinish() {
         if (deadline === -1) return
-        setCount(count + 1)
+        // setCount(count + 1)
     }
 
     function countRender() {
         return (
             <Space className="layout-count-count">
                 <Button shape="circle" onClick={decCount}>-</Button>
-                <span style={{ verticalAlign: 'middle' }}>{ count }</span>
+                <span style={{ verticalAlign: 'middle' }}>{ day.count }</span>
                 <Button shape="circle" onClick={addCount}>+</Button>
             </Space>
         )
@@ -62,25 +84,28 @@ const Count: React.FC<Props> = ({ initCount }) => {
         )
     }
 
-    // function dayPickerRender() {
-
-    // }
+    function dateRender() {
+        const list = dates.slice(day.index - 100, day.index).reverse()
+        return (
+            <Card>
+                { list.map((item, index) => (
+                    <Card.Grid className="count-grid" key={index}>{ `Date: ${item.date.slice(3)} Count: ${item.count}` }</Card.Grid>
+                )) }
+            </Card>
+        )
+    }
 
     return (
         <Layout className="layout-count">
             <h1>Potato Count</h1>
-            <h2>Use Count</h2>
+            <h2>Use Count: { day.date }</h2>
             { countRender() }
             <h2>Potato</h2>
             { potatoRender() }
-            <h2>Check Data</h2>
+            <h2>Check Date</h2>
+            { dateRender() }
         </Layout>
     )
 };
-
-export const getStaticProps: GetStaticProps = async () => {
-  const initCount = 0
-  return { props: { initCount } }
-}
 
 export default Count
