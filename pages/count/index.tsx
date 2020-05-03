@@ -1,54 +1,69 @@
 import React, { useState, useEffect } from 'react'
-import { Button, Statistic, Space, Card } from 'antd'
+import { Button, Statistic, Space, Card, Spin } from 'antd'
 import axios from 'axios'
+import moment from 'moment'
 
 import Layout from '../../components/Layout'
 import './index.less'
 
 interface Day {
-    count: number
-    date: string
-    index: number
-}
-interface IDate {
+    id: number
     count: number
     date: string
 }
 
 const { Countdown } = Statistic
+const now = moment().format('YY/MM/DD')
 
 const Count: React.FC = () => {
-    const [day, setDay] = useState<Day>({ count: 0, date: '20/01/01', index: 0 })
-    const [dates, setDates] = useState<IDate[]>([])
+    const [currentDate, setCurrentDate] = useState<Day>({ count: 0, date: '20/01/01', id: 20000 })
+    const [dates, setDates] = useState<Day[]>([])
     const [deadline, setDeadline] = useState(0)
+    const [countLoading, setCountLoading] = useState(false)
 
     useEffect(() => {
+        getDate(now)
         getDateList()
     }, [])
 
-    async function getDateList() {
-        const res = await axios.get('/api/count/list')
+    useEffect(() => {
+        let date = dates.find(item => item.id === currentDate.id)
+        if (date) {
+            date.count = currentDate.count
+            setDates([...dates])
+        }
+    }, [currentDate])
+
+    async function getDate(date: string) {
+        const res = await axios.get(`/api/count/date?date=${date}`)
         const dayData = res.data
-        setDay(dayData.data.day)
-        setDates(dayData.data.list)
+        setCurrentDate(dayData.data[0])
     }
 
-    async function setDateData(count: number) {
-        await axios.post('/api/count/set', {
-            date: day.date,
+    async function getDateList() {
+        const res = await axios.get('/api/count/list')
+        const listData = res.data
+        setDates(listData.data)
+    }
+
+    async function updateDateData(count: number) {
+        setCountLoading(true)
+        await axios.post('/api/count/update', {
+            id: currentDate.id,
             count
         })
-        await getDateList()
+        await getDate(currentDate.date)
+        setCountLoading(false)
     }
 
     function decCount() {
-        if (day.count > 0) {
-            setDateData(day.count - 1)
+        if (currentDate.count > 0) {
+            updateDateData(currentDate.count - 1)
         }
     }
 
     function addCount() {
-        setDateData(day.count + 1)
+        updateDateData(currentDate.count + 1)
     }
 
     function onStartCount() {
@@ -61,15 +76,23 @@ const Count: React.FC = () => {
 
     function onFinish() {
         if (deadline === -1) return
-        // setCount(count + 1)
+        updateDateData(currentDate.count + 1)
+    }
+
+    function changeCurrentDate(dateId: number) {
+        const date = dates.find(item => item.id === dateId)
+        if (date) {
+            setCurrentDate(date)
+        }
     }
 
     function countRender() {
         return (
             <Space className="layout-count-count">
-                <Button shape="circle" onClick={decCount}>-</Button>
-                <span style={{ verticalAlign: 'middle' }}>{ day.count }</span>
-                <Button shape="circle" onClick={addCount}>+</Button>
+                <Button shape="circle" onClick={decCount} disabled={countLoading}>-</Button>
+                <span style={{ verticalAlign: 'middle' }}>{ currentDate.count }</span>
+                <Button shape="circle" onClick={addCount} disabled={countLoading}>+</Button>
+                <Spin style={{ marginLeft: 12 }} spinning={countLoading} />
             </Space>
         )
     }
@@ -85,20 +108,22 @@ const Count: React.FC = () => {
     }
 
     function dateRender() {
-        const list = dates.slice(day.index - 100, day.index).reverse()
         return (
             <Card>
-                { list.map((item, index) => (
-                    <Card.Grid className="count-grid" key={index}>{ `Date: ${item.date.slice(3)} Count: ${item.count}` }</Card.Grid>
+                { dates.map((item, index) => (
+                    <Card.Grid className="count-grid" key={index}>
+                        <div onClick={() => changeCurrentDate(item.id)}>{ `Date: ${item.date.slice(3)} Count: ${item.count}` }</div>
+                    </Card.Grid>
                 )) }
             </Card>
         )
     }
+    console.log('render')
 
     return (
         <Layout className="layout-count">
             <h1>Potato Count</h1>
-            <h2>Use Count: { day.date }</h2>
+            <h2>Use Count: { currentDate.date }</h2>
             { countRender() }
             <h2>Potato</h2>
             { potatoRender() }
