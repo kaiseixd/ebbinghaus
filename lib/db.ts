@@ -2,10 +2,10 @@ import mysql from 'serverless-mysql'
 
 const db = mysql({
     config: {
-        host: process.env.MYSQL_HOST,
-        database: process.env.MYSQL_DATABASE,
-        user: process.env.MYSQL_USER,
-        password: process.env.MYSQL_PASSWORD
+        host: process.env.NODE_ENV === 'development' ? process.env.LOCAL_MYSQL_HOST : process.env.MYSQL_HOST,
+        database: process.env.NODE_ENV === 'development' ? process.env.LOCAL_MYSQL_DATABASE : process.env.MYSQL_DATABASE,
+        user: process.env.NODE_ENV === 'development' ? process.env.LOCAL_MYSQL_USER : process.env.MYSQL_USER,
+        password: process.env.NODE_ENV === 'development' ? process.env.LOCAL_MYSQL_PASSWORD : process.env.MYSQL_PASSWORD
     }
 })
 
